@@ -30,7 +30,10 @@ class ppBinarySelector extends GtkVBox {
 		unset($box,$label);
 
 		$this->input = new GtkEntry;
+		$this->findDefaultBinary();
+
 		$this->browse = new GtkButton('Browse...');
+		$this->browse->connect_simple('clicked',array($this,'onBrowse'));
 
 		$box = new GtkHBox;
 		$box->pack_start($this->input,true,true,4);
@@ -38,7 +41,7 @@ class ppBinarySelector extends GtkVBox {
 		$this->pack_start($box,true,true,4);
 		unset($box);
 
-		$this->findDefaultBinary();
+		
 
 		return;
 	}
@@ -54,6 +57,15 @@ class ppBinarySelector extends GtkVBox {
 		$this->input->set_text($binary);
 		
 		bob_gtk_events_pending();
+
+		return;
+	}
+
+	public function onBrowse() {
+		$dialog = new bobOpenFileDialog;
+
+		if($dialog->file) $this->input->set_text($dialog->file);
+		$dialog->destroy(); unset($dialog);
 
 		return;
 	}
