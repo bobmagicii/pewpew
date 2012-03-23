@@ -4,6 +4,8 @@ pewpew - Launch PHP's Embedded Webserver like a boss
 * Author: Bob Majdak Jr (@bobmajdakjr) <bob@opsat.net>
 * Version: 1.0.0 (2012/03/24)
 
+![pewpew](http://www.opsat.net/longterm/pewpew/pewpew.png)
+
 What It Does
 --------------------------------------------------------------------------------
 
