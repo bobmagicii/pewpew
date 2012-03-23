@@ -1,0 +1,369 @@
+<?php
+
+require(sprintf('%s/lib/bob-gtk.so.php',dirname(__FILE__)));
+
+class ppOpenDirectoryDialog extends bobOpenFileDialog {
+
+	public function __construct($parent=null) {
+		parent::__construct(array(
+			'parent' => $parent,
+			'action' => 'folder'
+		));
+		return;
+	}
+
+}
+
+class ppBinarySelector extends GtkVBox {
+
+	public $input;
+	public $browse;
+
+	public function __construct() { 
+		parent::__construct();
+
+		$box = new GtkHBox;
+		$label = new GtkLabel('Select the PHP binary to use to run the server.');
+		$label->set_line_wrap(true);
+		$box->pack_start($label,false,false,4);
+		$this->pack_start($box,true,true,4);
+		unset($box,$label);
+
+		$this->input = new GtkEntry;
+		$this->browse = new GtkButton('Browse...');
+
+		$box = new GtkHBox;
+		$box->pack_start($this->input,true,true,4);
+		$box->pack_start($this->browse,false,false,4);
+		$this->pack_start($box,true,true,4);
+		unset($box);
+
+		$this->findDefaultBinary();
+
+		return;
+	}
+
+	protected function findDefaultBinary() {
+
+		if(preg_match('/^WIN/i',PHP_OS)) $binary = trim(`where php`);
+		else $binary = trim(`which php`);
+
+		$this->input->grab_focus();
+		$this->input->set_position(-1);
+		$this->input->select_region(0,0);
+		$this->input->set_text($binary);
+		
+		bob_gtk_events_pending();
+
+		return;
+	}
+
+}
+
+class ppDirectorySelector extends GtkVBox {
+
+	public $input;
+	public $browse;
+
+	public function __construct() { 
+		parent::__construct();
+
+		$box = new GtkHBox;
+		$label = new GtkLabel(
+			'Select the directory to use at the document root of the server.'
+		);
+		$label->set_line_wrap(true);
+		$box->pack_start($label,false,false,4);
+		$this->pack_start($box,true,true,4);
+		unset($box,$label);
+
+		$this->input = new GtkEntry;
+		$this->input->set_text(dirname(__FILE__));
+
+		$this->browse = new GtkButton('Browse...');
+		$this->browse->connect_simple('clicked',array($this,'onBrowse'));
+
+		$box = new GtkHBox;
+		$box->pack_start($this->input,true,true,4);
+		$box->pack_start($this->browse,false,false,4);
+		$this->pack_start($box,true,true,4);
+		unset($box);
+
+		return;
+	}
+
+	public function onBrowse() {
+		$dialog = new ppOpenDirectoryDialog($this->get_toplevel());
+
+		if($dialog->file) $this->input->set_text($dialog->file);
+
+		$dialog->destroy(); unset($dialog);
+		return;
+	}
+}
+
+class ppHostnameInput extends GtkVBox {
+
+	public $input;
+
+	public function __construct() {
+		parent::__construct();
+
+		$box = new GtkHBox;
+		$label = new GtkLabel(
+			'Enter a hostname and port to bind the server to.'
+		);
+		$label->set_line_wrap(true);
+		$box->pack_start($label,false,false,4);
+		$this->pack_start($box,true,true,4);
+		unset($box,$label);
+
+		$this->input = new GtkEntry;
+		$this->input->set_text('localhost:8080');
+
+		$box = new GtkHBox;
+		$box->pack_start(new GtkLabel('Hostname:'),false,false,4);
+		$box->pack_start($this->input,true,true,4);
+		$this->pack_start($box,true,true,4);
+		unset($box);
+
+		return;
+	}
+
+}
+
+class ppServerOutput extends GtkVBox {
+
+	public $view;
+
+	public function __construct() {
+		parent::__construct();
+
+		$this->view = new bobTextView;
+		$this->view->set_size_request(-1,100);
+
+		$box = new GtkHBox;
+		$box->pack_start($this->view,true,true,4);
+		$this->pack_start($box,true,true,4);
+		unset($box);
+
+		return;
+	}
+
+}
+
+class ppServerControls extends GtkVBox {
+
+	public $toggle;
+
+	public function __construct() {
+		parent::__construct();
+
+		$this->toggle = new GtkButton('Start Server');
+		$this->toggle->child->set_padding(8,8);
+
+		$box = new GtkHBox;
+		$box->pack_start($this->toggle,true,true,4);
+		$this->pack_start($box,true,true,4);
+		unset($box);
+
+		return;
+	}
+
+}
+
+class ppWindow extends bobWindow {
+
+	public $binary;
+	public $directory;
+	public $hostname;
+	public $output;
+
+	protected $cmd;
+	protected $cmdid;
+	protected $cmdpipe;
+
+	public function __construct() {
+		parent::__construct(array(
+			'title' => 'pewpew - PHP\'s Embedded Webserver',
+			'size'  => '400x-1'
+		));
+
+		$this->binary = new ppBinarySelector;
+		$this->vbox->pack_start($this->binary,false,false,4);
+
+		$this->directory = new ppDirectorySelector;
+		$this->vbox->pack_start($this->directory,false,false,4);
+
+		$this->hostname = new ppHostnameInput;
+		$this->vbox->pack_start($this->hostname,false,false,4);
+
+		// been having issues getting things to actually read the stdout of
+		// the php server, so i've resigned for now to do without this really
+		// awesome text output.
+		// $this->output = new ppServerOutput;
+		// $this->vbox->pack_start($this->output,true,true,4);
+
+		$this->control = new ppServerControls;
+		$this->control->toggle->connect_simple('clicked',array($this,'onServerToggle'));
+		$this->vbox->pack_start($this->control,true,true,4);
+
+		$this->show_all();
+		//$this->output->hide();
+
+		$this->control->toggle->grab_focus();
+
+		return;
+	}
+
+	public function onDelete() {
+		if($this->cmd) $this->onServerStop();
+		Gtk::main_quit();
+		return;
+	}
+
+	public function onServerToggle() {
+		$this->set_sensitive(false);
+		bob_gtk_events_pending();
+
+		if($this->cmd) $this->onServerStop();
+		else $this->onServerStart();
+		
+		$this->set_sensitive(true);
+		bob_gtk_events_pending();
+		return;
+	}
+
+	public function onServerStart() {
+		$binary = $this->binary->input->get_text();
+		$host = $this->hostname->input->get_text();
+		$docroot = $this->directory->input->get_text();
+
+		// check that we have a hostname.
+		if(!$host) {
+			$dialog = new bobAlertDialog(array(
+				'parent' => $this,
+				'title' => 'Fail',
+				'message' => 'You did not supply a hostname.'
+			));
+			$dialog->run();
+			$dialog->destroy(); unset($dialog);
+			return;
+		}
+
+		// check that we have a port.
+		if(strpos($host,':') === false) $host .= ':8080';
+
+		// check that we have a directory, and that it exists.
+		if(!$docroot || !is_dir($docroot)) {
+			$dialog = new bobAlertDialog(array(
+				'parent' => $this,
+				'title' => 'Fail',
+				'message' => 'Unable to use specified directory.'
+			));
+			$dialog->run();
+			$dialog->destroy(); unset($dialog);
+			return;			
+		}
+
+		if(preg_match('/^WIN/i',PHP_OS))
+			$cmd = sprintf(
+				'start "" /B /WAIT %s -S %s -t %s',
+				escapeshellarg($binary),
+				escapeshellarg($host),
+				escapeshellarg($docroot)
+			);
+		else
+			$cmd = sprintf(
+				'%s -S %s -t %s',
+				escapeshellarg($binary),
+				escapeshellarg($host),
+				escapeshellarg($docroot)			
+			);
+
+		//echo $cmd,PHP_EOL;
+		$this->cmd = proc_open(
+			$cmd,
+			array(0 => array('pipe','r'), 1 => array('pipe','w')),
+			$this->cmdpipe
+		);
+
+		// if the server failed to launch
+		if(!$this->cmd) {
+			$dialog = new bobAlertDialog(array(
+				'parent' => $this,
+				'title' => 'Fail',
+				'message' => 'Unable to start the server.'
+			));
+			$dialog->run();
+			$dialog->destroy(); unset($dialog);
+			return;
+		}
+
+		$this->hostname->set_sensitive(false);
+		$this->directory->set_sensitive(false);
+		$this->binary->set_sensitive(false);
+		$this->control->toggle->set_label('Stop Server');
+
+		// prepare the io watcher.
+		//stream_set_blocking($this->cmdpipe[0],false);
+		//stream_set_blocking($this->cmdpipe[1],false);
+		//$this->cmdid = Gtk::io_add_watch(
+		//	$this->cmdpipe[1],
+		//	GObject::IO_IN|GObject::IO_HUP|GObject::IO_ERR,
+		//	array($this,'onServerOutput')
+		//);
+		// $this->output->show_all();
+
+		return;
+	}
+
+	public function onServerStop() {
+		if(!$this->cmd) return;
+
+		$pstat = proc_get_status($this->cmd);
+		//print_r($pstat);
+
+		if(preg_match('/^WIN/i',PHP_OS)) {
+			system("taskkill /PID {$pstat['pid']} /F /T > nul");
+		} else {
+			system("kill -9 {$pstat['pid']} > /dev/null");
+		}
+
+		unset($pstat);
+		proc_close($this->cmd);
+
+		$this->cmd = $this->cmdid = $this->cmdpipe = null;
+
+		$this->hostname->set_sensitive(true);
+		$this->directory->set_sensitive(true);
+		$this->binary->set_sensitive(true);
+		$this->control->toggle->set_label('Start Server');
+		// $this->output->hide();
+		return;
+	}
+
+	public function onServerOutput($chan,$cond) {
+		echo 'derp',$cond,PHP_EOL;
+
+		if($cond & (GObject::IO_HUP|GObject::IO_ERR) != 0) {
+			$this->output->view->append_text($line,true);
+			return false;
+		}
+
+		if(!is_array($this->cmdpipe)) {
+			return false;
+		}
+
+		while($line = fgets($this->cmdpipe[1])) {
+			$this->output->view->append_text($line,true);
+		}
+
+		return true;
+	}
+}
+
+new ppWindow;
+Gtk::main();
+
+?>
