@@ -20,8 +20,9 @@ Current State
 --------------------------------------------------------------------------------
 
 I have only tested it on Windows 7 so far, but I have taken care of the Unixen I
-just need to get around to testing it instead of playing Saints Row 3 when I get
-home.
+just need to get around to testing it instead of
+[playing Saints Row 3](http://www.opsat.net/derpdex/sr3/2012-03-21_00002.jpg) when
+I get home.
 
 
 License
