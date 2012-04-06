@@ -62,7 +62,9 @@ class ppBinarySelector extends GtkVBox {
 	}
 
 	public function onBrowse() {
-		$dialog = new bobOpenFileDialog;
+		$dialog = new bobOpenFileDialog(array(
+			'parent' => $this->get_toplevel()
+		));
 
 		if($dialog->file) $this->input->set_text($dialog->file);
 		$dialog->destroy(); unset($dialog);
