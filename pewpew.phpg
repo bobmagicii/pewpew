@@ -2,6 +2,47 @@
 
 require(sprintf('%s/lib/bob-gtk.so.php',dirname(__FILE__)));
 
+define('PEWPEW_CONFIG_FILE',sprintf('%s/config.json',dirname(__FILE__)));
+
+class ppConfigFile {
+
+	public $LastHostname;
+	public $LastDirectory;
+
+	public function __construct() {
+
+		$this->LastHostname = 'localhost:80';
+		$this->LastDirectory = dirname(__FILE__);
+
+		if(file_exists(PEWPEW_CONFIG_FILE)) {
+			$obj = json_decode(file_get_contents(PEWPEW_CONFIG_FILE));
+			if(is_object($obj)) {
+				foreach($obj as $prop => $val)
+				$this->{$prop} = $val;
+			}
+		} else {
+			$this->save();
+		}
+
+		return;
+	}
+
+	public function save() {
+		if(file_exists(PEWPEW_CONFIG_FILE)) {
+			if(is_writable(PEWPEW_CONFIG_FILE)) {
+				file_put_contents(PEWPEW_CONFIG_FILE,json_encode($this));
+			}
+		} else {
+			if(is_writable(dirname(PEWPEW_CONFIG_FILE))) {
+				file_put_contents(PEWPEW_CONFIG_FILE,json_encode($this));
+			}		
+		}
+
+		return;
+	}
+
+}
+
 class ppOpenDirectoryDialog extends bobOpenFileDialog {
 
 	public function __construct($parent=null) {
@@ -92,7 +133,9 @@ class ppDirectorySelector extends GtkVBox {
 		unset($box,$label);
 
 		$this->input = new GtkEntry;
-		$this->input->set_text(dirname(__FILE__));
+
+		$config = new ppConfigFile;
+		$this->input->set_text($config->LastDirectory);
 
 		$this->browse = new GtkButton('Browse...');
 		$this->browse->connect_simple('clicked',array($this,'onBrowse'));
@@ -133,7 +176,11 @@ class ppHostnameInput extends GtkVBox {
 		unset($box,$label);
 
 		$this->input = new GtkEntry;
-		$this->input->set_text('localhost:8080');
+
+		// get the last used hostname.
+		$config = new ppConfigFile;
+		$this->input->set_text($config->LastHostname);
+
 
 		$box = new GtkHBox;
 		$box->pack_start(new GtkLabel('Hostname:'),false,false,4);
@@ -318,6 +365,11 @@ class ppWindow extends bobWindow {
 		$this->directory->set_sensitive(false);
 		$this->binary->set_sensitive(false);
 		$this->control->toggle->set_label('Stop Server');
+
+		$config = new ppConfigFile;
+		$config->LastHostname = $host;
+		$config->LastDirectory = $docroot;
+		$config->save();
 
 		// prepare the io watcher.
 		//stream_set_blocking($this->cmdpipe[0],false);
