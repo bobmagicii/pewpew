@@ -72,8 +72,8 @@ function bob_gtk_object_default($input,$defaults) {
 }
 
 function bob_gtk_events_pending() {
-	while(Gtk::events_pending() || Gdk::events_pending())
-		Gtk::main_iteration_do(true);
+	while(Gtk::events_pending())
+		Gtk::main_iteration();
 
 	return;
 }
@@ -140,13 +140,13 @@ class bobWindow extends GtkWindow {
 			foreach($iconlist as $iconfile)
 				$iconbufs[] = GdkPixbuf::new_from_file($iconfile);
 
-			if(count($iconbufs)) $this->set_icon_list($iconbufs);
+			// if(count($iconbufs)) $this->set_icon_list($iconbufs); // not implemented yet
 			unset($iconlist,$iconbufs,$iconfile);
 		}
 
-		$this->connect_simple('delete-event',array($this,'onDelete'));
+		$this->connect('delete-event',array($this,'onDelete'));
 
-		$this->vbox = new GtkVBox;
+		$this->vbox = new GtkBox(GtkOrientation::VERTICAL);
 		$this->add($this->vbox);
 
 		return;
@@ -296,20 +296,23 @@ class bobOpenFileDialog extends GtkFileChooserDialog {
 		// determine what type of open dialog we wanted.
 		switch($opt->action) {
 			case 'folder': {
-				$type = Gtk::FILE_CHOOSER_ACTION_SELECT_FOLDER;
+				$type = GtkFileChooserAction::SELECT_FOLDER;
 				$title = 'Open Folder...';
 				break; 
 			}
 			case 'file': { }
 			default: {
-				$type = Gtk::FILE_CHOOSER_ACTION_OPEN;
+				$type = GtkFileChooserAction::OPEN;
 				$title = 'Open File...';
 				break;
 			}
 		}
 
 		// go ahead and construct now.
-		parent::__construct($type);
+		parent::__construct($title, $opt->parent, $type, [
+			"Cancel", GtkResponseType::CANCEL, 
+			"Accept", GtkResponseType::ACCEPT, 
+		]);
 
 		if(!self::$lastdir) {
 			if(class_exists('bobSaveFileDialog') && bobSaveFileDialog::$lastdir)
@@ -319,23 +322,23 @@ class bobOpenFileDialog extends GtkFileChooserDialog {
 		// go to the last used directory if one was set.
 		if(self::$lastdir) $this->set_current_folder(self::$lastdir);
 
-		$this->set_action($type);
-		$this->set_modal(true);
+		// $this->set_action($type);
+		// $this->set_modal(true);
 		$this->set_position(Gtk::WIN_POS_CENTER);
-		$this->set_title($title);
-		if($opt->parent) $this->set_transient_for($opt->parent);
+		// $this->set_title($title);
+		// if($opt->parent) $this->set_transient_for();
 
-		$this->add_buttons(array(
-			Gtk::STOCK_CANCEL, Gtk::RESPONSE_CANCEL,
-			Gtk::STOCK_OPEN, Gtk::RESPONSE_ACCEPT
-		));
+		// $this->add_buttons(array(
+		// 	Gtk::STOCK_CANCEL, Gtk::RESPONSE_CANCEL,
+		// 	Gtk::STOCK_OPEN, Gtk::RESPONSE_ACCEPT
+		// ));
 
 		$this->show_all();
 		$result = $this->run();
 		$this->hide();
 
 		// if ok keep the file in a property on this object.
-		if($result == Gtk::RESPONSE_ACCEPT) $this->file = $this->get_filename();
+		if($result == GtkResponseType::ACCEPT) $this->file = $this->get_filename();
 		else $this->file = null;
 
 		// remember the last used folder so we can go there next time we ask
@@ -516,5 +519,3 @@ class bobTextBuffer extends GtkTextBuffer {
 	}
 
 }
-
-?>

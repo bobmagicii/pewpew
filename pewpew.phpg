@@ -55,15 +55,15 @@ class ppOpenDirectoryDialog extends bobOpenFileDialog {
 
 }
 
-class ppBinarySelector extends GtkVBox {
+class ppBinarySelector extends GtkBox {
 
 	public $input;
 	public $browse;
 
 	public function __construct() { 
-		parent::__construct();
+		parent::__construct(GtkOrientation::VERTICAL);
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$label = new GtkLabel('Select the PHP binary to use to run the server.');
 		$label->set_line_wrap(true);
 		$box->pack_start($label,false,false,4);
@@ -74,9 +74,9 @@ class ppBinarySelector extends GtkVBox {
 		$this->findDefaultBinary();
 
 		$this->browse = new GtkButton('Browse...');
-		$this->browse->connect_simple('clicked',array($this,'onBrowse'));
+		$this->browse->connect('clicked',array($this,'onBrowse'));
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$box->pack_start($this->input,true,true,4);
 		$box->pack_start($this->browse,false,false,4);
 		$this->pack_start($box,true,true,4);
@@ -93,8 +93,8 @@ class ppBinarySelector extends GtkVBox {
 		else $binary = trim(`which php`);
 
 		$this->input->grab_focus();
-		$this->input->set_position(-1);
-		$this->input->select_region(0,0);
+		// $this->input->set_position(-1);
+		// $this->input->select_region(0,0);
 		$this->input->set_text($binary);
 		
 		bob_gtk_events_pending();
@@ -115,15 +115,15 @@ class ppBinarySelector extends GtkVBox {
 
 }
 
-class ppDirectorySelector extends GtkVBox {
+class ppDirectorySelector extends GtkBox {
 
 	public $input;
 	public $browse;
 
 	public function __construct() { 
-		parent::__construct();
+		parent::__construct(GtkOrientation::VERTICAL);
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$label = new GtkLabel(
 			'Select the directory to use at the document root of the server.'
 		);
@@ -138,9 +138,9 @@ class ppDirectorySelector extends GtkVBox {
 		$this->input->set_text($config->LastDirectory);
 
 		$this->browse = new GtkButton('Browse...');
-		$this->browse->connect_simple('clicked',array($this,'onBrowse'));
+		$this->browse->connect('clicked',array($this,'onBrowse'));
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$box->pack_start($this->input,true,true,4);
 		$box->pack_start($this->browse,false,false,4);
 		$this->pack_start($box,true,true,4);
@@ -159,14 +159,14 @@ class ppDirectorySelector extends GtkVBox {
 	}
 }
 
-class ppHostnameInput extends GtkVBox {
+class ppHostnameInput extends GtkBox {
 
 	public $input;
 
 	public function __construct() {
-		parent::__construct();
+		parent::__construct(GtkOrientation::VERTICAL);
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$label = new GtkLabel(
 			'Enter a hostname and port to bind the server to.'
 		);
@@ -182,7 +182,7 @@ class ppHostnameInput extends GtkVBox {
 		$this->input->set_text($config->LastHostname);
 
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$box->pack_start(new GtkLabel('Hostname:'),false,false,4);
 		$box->pack_start($this->input,true,true,4);
 		$this->pack_start($box,true,true,4);
@@ -193,17 +193,17 @@ class ppHostnameInput extends GtkVBox {
 
 }
 
-class ppServerOutput extends GtkVBox {
+class ppServerOutput extends GtkBox {
 
 	public $view;
 
 	public function __construct() {
-		parent::__construct();
+		parent::__construct(GtkOrientation::VERTICAL);
 
 		$this->view = new bobTextView;
 		$this->view->set_size_request(-1,100);
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$box->pack_start($this->view,true,true,4);
 		$this->pack_start($box,true,true,4);
 		unset($box);
@@ -213,17 +213,17 @@ class ppServerOutput extends GtkVBox {
 
 }
 
-class ppServerControls extends GtkVBox {
+class ppServerControls extends GtkBox {
 
 	public $toggle;
 
 	public function __construct() {
-		parent::__construct();
+		parent::__construct(GtkOrientation::VERTICAL);
 
-		$this->toggle = new GtkButton('Start Server');
-		$this->toggle->child->set_padding(8,8);
+		$this->toggle = GtkButton::new_with_label("Start Server");
+		// $this->toggle->child->set_padding(8,8);
 
-		$box = new GtkHBox;
+		$box = new GtkBox(GtkOrientation::HORIZONTAL);
 		$box->pack_start($this->toggle,true,true,4);
 		$this->pack_start($box,true,true,4);
 		unset($box);
@@ -266,7 +266,7 @@ class ppWindow extends bobWindow {
 		// $this->vbox->pack_start($this->output,true,true,4);
 
 		$this->control = new ppServerControls;
-		$this->control->toggle->connect_simple('clicked',array($this,'onServerToggle'));
+		$this->control->toggle->connect('clicked',array($this,'onServerToggle'));
 		$this->vbox->pack_start($this->control,true,true,4);
 
 		$this->show_all();
@@ -283,7 +283,7 @@ class ppWindow extends bobWindow {
 		return;
 	}
 
-	public function onServerToggle() {
+	public function onServerToggle($widget) {
 		$this->set_sensitive(false);
 		bob_gtk_events_pending();
 
@@ -431,5 +431,3 @@ class ppWindow extends bobWindow {
 
 new ppWindow;
 Gtk::main();
-
-?>
